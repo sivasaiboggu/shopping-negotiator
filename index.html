@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopping Negotiator — compare listings, haggle within your budget</title>
+<meta name="description" content="Compare seeded listings and negotiate with seller bots — never above your budget. A hackathon demo on a simulated marketplace.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <div class="brand">Haggle<span> — Shopping Negotiator</span></div>
+  <nav>
+    <button type="button" data-nav="compare">Compare</button>
+    <button type="button" data-nav="negotiate">Negotiate</button>
+    <button type="button" data-nav="history">History</button>
+    <button type="button" id="settingsBtn">Settings</button>
+  </nav>
+</div></header>
+
+<div class="notice"><div class="wrap">
+  <strong>Simulated marketplace — seller bots.</strong>
+  These listings and sellers are seeded demo data. This app cannot message real sellers on OLX, Facebook Marketplace or eBay, and it does not try to.
+</div></div>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Find the price. Then haggle for it.</h1>
+    <p class="sub">Pick a product, set the most you will pay, and let the negotiator compare listings and talk to three sellers at once. Every offer is checked against your budget in code — it cannot offer a rupee more.</p>
+  </section>
+
+  <div class="grid">
+    <div>
+      <section class="card" id="compare">
+        <p class="kicker">1 · Your request</p>
+        <h2>What are you buying?</h2>
+        <form id="requestForm" novalidate>
+          <label for="product">Product</label>
+          <select id="product"></select>
+          <div class="field-row">
+            <div><label for="budget">Hard budget (₹)</label>
+            <input type="number" id="budget" min="100" step="100" value="18000" inputmode="numeric"></div>
+            <div><label for="target">Target price (₹)</label>
+            <input type="number" id="target" min="100" step="100" value="16500" inputmode="numeric"></div>
+          </div>
+          <div class="field-row">
+            <div><label for="rounds">Max rounds</label>
+            <input type="number" id="rounds" min="2" max="8" step="1" value="5" inputmode="numeric"></div>
+            <div><label for="city">City</label><select id="city"></select></div>
+          </div>
+          <p class="error" id="formError" role="alert"></p>
+          <button class="btn block" type="submit">Compare listings</button>
+          <button class="btn ghost block" type="button" id="demoBtn">Run the 60-second demo</button>
+        </form>
+        <p class="hint" style="margin-top:12px">The demo fills in Sony WH-1000XM5, ₹18,000 budget, ₹16,500 target, Bengaluru, and plays all three negotiations to the end.</p>
+      </section>
+
+      <section class="card" id="guardrailCard">
+        <p class="kicker">Guardrails</p>
+        <h2>What the agent cannot do</h2>
+        <ul style="margin:10px 0 0;padding-left:20px;font-size:14px;color:var(--muted)">
+          <li>Offer above your hard budget — offers are clamped in code.</li>
+          <li>Accept above target + 5% — accepts outside that are blocked and logged.</li>
+          <li>Keep haggling past your max rounds — it walks away instead.</li>
+          <li>See or reveal a seller's lowest price — reservation prices stay hidden.</li>
+        </ul>
+        <p class="hint" style="margin-top:10px" id="keyStatus">Seller replies: price ladder (no key). Add a free Gemini key in Settings for AI-written replies.</p>
+      </section>
+    </div>
+
+    <div>
+      <section class="card" id="resultsCard">
+        <p class="kicker">2 · Compare</p>
+        <h2>Listings</h2>
+        <p class="hint">Seeded demo listings for the product you picked. Score weighs price 50%, condition 20%, seller rating 20%, delivery 10%.</p>
+        <div id="resultsEmpty" class="empty">Fill in the request and press “Compare listings”. The table, the price chart and the three sellers worth negotiating with will appear here.</div>
+        <div id="results" hidden>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Listing</th><th>Total cost</th><th>Score</th><th>Seller</th><th></th></tr></thead>
+            <tbody id="resultsBody"></tbody>
+          </table></div>
+          <div class="chart" id="chart"></div>
+          <p class="legend" id="chartLegend"></p>
+          <p id="skipNote" class="skip" style="margin-top:10px"></p>
+          <button class="btn block" type="button" id="startBtn">Start negotiating with 3 sellers</button>
+        </div>
+      </section>
+
+      <section id="negotiate" style="margin-top:16px">
+        <div class="card">
+          <p class="kicker">3 · Negotiate</p>
+          <h2>Live negotiations</h2>
+          <p class="hint">One card per seller. Offers go out, counters come back, and the ledger records every move. Accept, counter or walk away at any time.</p>
+          <div id="negEmpty" class="empty">No negotiations yet. Compare listings first, then start negotiating.</div>
+          <div class="neg-grid" id="negGrid"></div>
+        </div>
+        <div id="dealArea"></div>
+        <div class="guard" id="guardArea" hidden>
+          <p class="kicker">Guardrail log</p>
+          <h2>Proof it stayed inside your budget</h2>
+          <ul id="guardList"></ul>
+        </div>
+      </section>
+
+      <section class="card" id="history">
+        <p class="kicker">History</p>
+        <h2>Past negotiations</h2>
+        <p class="hint">Saved in this browser only. Clearing your browser data clears this list.</p>
+        <div id="historyList"><p class="empty">Nothing yet — finished negotiations will show up here.</p></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="page">
+    <p>Haggle is a hackathon demo by Sivasai Boggu (2026), MIT License. Listings and sellers are seeded simulations, not real people or real offers. No money changes hands here.</p>
+  </footer>
+</main>
+
+<div class="modal-back" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <h2 id="settingsTitle">Settings — Gemini API key</h2>
+    <p class="hint">Optional. Without a key, seller replies come from a fixed price ladder and the demo still works end to end. With a free Gemini key, replies are written by the model (gemini-2.5-flash) and then checked against the same rules — a reply below a seller's lowest price is clamped, and a reply with no usable price falls back to the ladder.</p>
+    <label for="apiKey">Gemini API key</label>
+    <input type="password" id="apiKey" placeholder="Paste your free key from Google AI Studio" autocomplete="off">
+    <label for="model">Model</label>
+    <select id="model">
+      <option value="gemini-2.5-flash">gemini-2.5-flash (free tier)</option>
+      <option value="gemini-3.8-flash">gemini-3.8-flash (free tier)</option>
+    </select>
+    <p class="error" id="keyError" role="alert"></p>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn" type="button" id="saveKeyBtn">Save key</button>
+      <button class="btn ghost" type="button" id="clearKeyBtn">Remove key</button>
+      <button class="btn ghost" type="button" id="closeSettingsBtn">Close</button>
+    </div>
+    <p class="hint" style="margin-top:12px">The key is stored in this browser's localStorage only. It is sent only to Google's Gemini API, never to any other server. Get a free key at Google AI Studio (aistudio.google.com).</p>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
