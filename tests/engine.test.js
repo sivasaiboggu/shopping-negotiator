@@ -159,3 +159,32 @@ test('dealSummary: null when no deal, correct savings when accepted', () => {
   assert.equal(sum.saved, 3000);
   assert.equal(sum.savedPct, 15);
 });
+
+
+test('scoreListing: a listing with no rating anywhere still scores a finite number', () => {
+  const l = listing(18000); delete l.rating;
+  const s = E.scoreListing(l, 18000, 300);
+  assert.ok(Number.isFinite(s.score), 'score ' + s.score);
+  assert.ok(s.score >= 0 && s.score <= 100);
+  assert.equal(s.breakdown.rating, 50, 'unrated seller scores neutral 50');
+  const ranked = E.rankListings([listing(18000), listing(20000)]);
+  assert.ok(ranked.every((r) => Number.isFinite(r.score)));
+});
+
+test('manualCounter: belongs to the round in progress, never mints a new one', () => {
+  const neg = E.newNegotiation(listing(20000), seller('flexible', 16000), req());
+  E.runRound(neg, listing(20000), seller('flexible', 16000), req());
+  const roundBefore = neg.round;
+  const res = E.manualCounter(neg, 17000, req());
+  assert.equal(res.ok, true);
+  assert.equal(neg.offers[neg.offers.length - 1].round, roundBefore);
+  assert.equal(neg.round, roundBefore);
+});
+
+test('manualCounter: refused once the negotiation is already decided', () => {
+  const neg = E.newNegotiation(listing(20000), seller('flexible', 16000), req());
+  E.walkAway(neg);
+  const res = E.manualCounter(neg, 17000, req());
+  assert.equal(res.ok, false);
+  assert.match(res.error, /walked away/);
+});

@@ -26,8 +26,11 @@
       ? Math.max(0, Math.min(100, (cheapestTotal / totalCost(listing)) * 100)) : 0;
     // Rating lives on the seller, not the listing: callers pass it in.
     // (Test fixtures may still carry a rating on the listing itself.)
+    // No rating anywhere used to make the whole score NaN; an unrated seller
+    // now scores a neutral 50 on rating instead of breaking the ranking.
     var r = (typeof rating === 'number') ? rating : listing.rating;
-    var ratingScore = Math.max(0, Math.min(100, (r / 5) * 100));
+    var ratingScore = (typeof r === 'number' && isFinite(r))
+      ? Math.max(0, Math.min(100, (r / 5) * 100)) : 50;
     var delScore = maxDelivery > 0
       ? Math.max(0, Math.min(100, (1 - (listing.deliveryFee || 0) / maxDelivery) * 100)) : 100;
     var score = 0.5 * priceScore + 0.2 * condScore + 0.2 * ratingScore + 0.1 * delScore;
@@ -156,11 +159,18 @@
 
   // Manual buyer actions (UI): counter / accept / walk away — all guarded.
   function manualCounter(neg, amount, request) {
+    if (neg.state !== 'offered' && neg.state !== 'countered') {
+      return { ok: false, error: 'This negotiation is already ' + neg.state.replace('_', ' ') + ' — start a new one to counter again.' };
+    }
     var c = clampOffer(amount, request.budget);
     if (c.clamped && c.amount === 0) return { ok: false, error: 'Enter an amount above ₹0.' };
     if (c.clamped) neg.guardrailLog.push('Manual counter ₹' + Number(amount).toLocaleString('en-IN') + ' was above budget — clamped to ₹' + c.amount.toLocaleString('en-IN') + '.');
     neg.lastBuyer = c.amount;
-    neg.offers.push({ by: 'buyer', amount: c.amount, round: neg.round + 1 });
+    // The counter belongs to the round in progress (or round 1 before any
+    // round has run) — it must not mint a new round number, or the next
+    // runRound would reuse the same number.
+    var round = Math.max(1, neg.round);
+    neg.offers.push({ by: 'buyer', amount: c.amount, round: round });
     neg.messages.push({ by: 'buyer', text: 'I can stretch to ₹' + c.amount.toLocaleString('en-IN') + '.', source: 'ladder' });
     return { ok: true, amount: c.amount, clamped: c.clamped };
   }
